@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Send, Upload, FileText } from 'lucide-react';
+import { Phone, Send, Upload, FileText , Download} from 'lucide-react';
 
 interface Results {
   jobPost: string;
@@ -23,6 +23,7 @@ function Dashboard() {
     jd: '',
     resume: ''
   });
+  const [tableData, setTableData] = useState<any[]>([]);
 
   const apiUrl = "https://recruitment-385388557268.asia-south2.run.app";
 
@@ -204,9 +205,42 @@ function Dashboard() {
       form.reset();
     }
   };
+
+  const downloadAsCSV = (jsonData: any[]) => {
+    if (!Array.isArray(jsonData) || jsonData.length === 0) {
+      alert('No data available to download');
+      return;
+    }
+    
+    const columns = Object.keys(jsonData[0]);
+    const header = columns.join(',');
+    const csvRows = jsonData.map(row => 
+      columns.map(col => {
+        // Format the value and handle special characters
+        const value = row[col] === null || row[col] === undefined ? '' : row[col];
+        const formatted = String(value).replace(/"/g, '""');
+        return `"${formatted}"`;
+      }).join(',')
+    );
+    
+    const csvContent = [header, ...csvRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'resume_results.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   
 
   const jsonToTable = (jsonData: any[]) => {
+    // Save the data for download
+    setTableData(jsonData);
+    
     if (!Array.isArray(jsonData) || jsonData.length === 0) {
       return `
         <div class="text-center p-10 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 shadow-lg mt-6">
@@ -306,11 +340,28 @@ function Dashboard() {
           </tbody>
         </table>
       </div>
-      <div class="mt-3 text-right text-xs text-gray-400">
-        Showing ${jsonData.length} result${jsonData.length !== 1 ? 's' : ''}
+      <div class="mt-3 flex justify-between items-center">
+        <button id="downloadCSV" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <span class="mr-2">Download CSV</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="text-xs text-gray-400">
+          Showing ${jsonData.length} result${jsonData.length !== 1 ? 's' : ''}
+        </div>
       </div>
     `;
   };
+
+  React.useEffect(() => {
+    const downloadButton = document.getElementById('downloadCSV');
+    if (downloadButton) {
+      downloadButton.addEventListener('click', () => downloadAsCSV(tableData));
+      return () => {
+        downloadButton.removeEventListener('click', () => downloadAsCSV(tableData));
+      };
+    }
+  }, [results.resume, tableData]);
+
 
   const handleWhatsAppConnect = (e: React.FormEvent) => {
     e.preventDefault();

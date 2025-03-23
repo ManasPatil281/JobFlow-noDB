@@ -237,121 +237,143 @@ function Dashboard() {
   };
   
 
-  const jsonToTable = (jsonData: any[]) => {
-    // Save the data for download
-    setTableData(jsonData);
+const jsonToTable = (jsonData: any[]) => {
+  // Save the data for download
+  setTableData(jsonData);
+  
+  if (!Array.isArray(jsonData) || jsonData.length === 0) {
+    return `
+      <div class="text-center p-10 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 shadow-lg mt-6">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        <h3 class="mt-2 text-lg font-medium text-purple-300">No data available</h3>
+        <p class="mt-1 text-sm text-gray-400">Try uploading a different file or adjusting your search parameters.</p>
+      </div>
+    `;
+  }
+
+  const columns = Object.keys(jsonData[0]);
+  const isNumeric = (val: any) => !isNaN(parseFloat(val)) && isFinite(val);
+
+  // Function to format cell data based on content type
+  const formatCellContent = (value: any, col: string, rowIndex: number) => {
+    if (value === null || value === undefined) return '-';
     
-    if (!Array.isArray(jsonData) || jsonData.length === 0) {
+    // Special handling for phone number columns
+    if (col.toLowerCase().includes('phone') || col.toLowerCase().includes('number') || col.toLowerCase().includes('contact')) {
+      const phoneNumber = String(value).replace(/\D/g, '');
       return `
-        <div class="text-center p-10 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 shadow-lg mt-6">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          <h3 class="mt-2 text-lg font-medium text-purple-300">No data available</h3>
-          <p class="mt-1 text-sm text-gray-400">Try uploading a different file or adjusting your search parameters.</p>
+        <div class="relative group">
+          <span class="cursor-pointer text-blue-400 hover:text-blue-300 transition-colors">
+            ${value}
+          </span>
+          <button 
+            class="whatsapp-btn absolute -top-2 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-lg text-xs flex items-center" 
+            data-phone="${phoneNumber}" 
+            onclick="event.stopPropagation(); window.open('https://wa.me/${phoneNumber.length === 10 ? '91' + phoneNumber : phoneNumber}', '_blank');"
+          >
+            <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"></path>
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22c-5.523 0-10-4.477-10-10s4.477-10 10-10 10 4.477 10 10-4.477 10-10 10z"></path>
+            </svg>
+            WhatsApp
+          </button>
         </div>
       `;
     }
-  
-    const columns = Object.keys(jsonData[0]);
-    const isNumeric = (val: any) => !isNaN(parseFloat(val)) && isFinite(val);
-  
-    // Function to format cell data based on content type
-    const formatCellContent = (value: any, col: string) => {
-      if (value === null || value === undefined) return '-';
-      
-      // Handle numbers with special formatting
-      if (isNumeric(value)) {
-        // For percentage columns
-        if (col.toLowerCase().includes('percent') || col.toLowerCase().includes('rate')) {
-          return `<span class="font-medium">${parseFloat(value).toFixed(1)}%</span>`;
-        }
-        // For score columns, add a visual indicator
-        if (col.toLowerCase().includes('score') || col.toLowerCase().includes('rating')) {
-          const score = parseFloat(value);
-          const scoreClass = score > 80 ? 'text-green-400' : (score > 60 ? 'text-yellow-400' : 'text-red-400');
-          return `<span class="${scoreClass} font-medium">${score.toFixed(1)}</span>`;
-        }
+    
+    // Handle numbers with special formatting
+    if (isNumeric(value)) {
+      // For percentage columns
+      if (col.toLowerCase().includes('percent') || col.toLowerCase().includes('rate')) {
+        return `<span class="font-medium">${parseFloat(value).toFixed(1)}%</span>`;
       }
-      
-      // Highlight status columns
-      if (col.toLowerCase() === 'status') {
-        const statusClass = {
-          'active': 'bg-green-500/20 text-green-300',
-          'inactive': 'bg-gray-500/20 text-gray-300',
-          'pending': 'bg-yellow-500/20 text-yellow-300',
-          'rejected': 'bg-red-500/20 text-red-300',
-          'approved': 'bg-green-500/20 text-green-300',
-          'qualified': 'bg-purple-500/20 text-purple-300',
-          'not qualified': 'bg-red-500/20 text-red-300',
-        }[value.toString().toLowerCase()] || 'bg-blue-500/20 text-blue-300';
-        
-        return `<span class="px-2 py-1 rounded-full text-xs ${statusClass}">${value}</span>`;
+      // For score columns, add a visual indicator
+      if (col.toLowerCase().includes('score') || col.toLowerCase().includes('rating')) {
+        const score = parseFloat(value);
+        const scoreClass = score > 80 ? 'text-green-400' : (score > 60 ? 'text-yellow-400' : 'text-red-400');
+        return `<span class="${scoreClass} font-medium">${score.toFixed(1)}</span>`;
       }
+    }
+    
+    // Highlight status columns
+    if (col.toLowerCase() === 'status') {
+      const statusClass = {
+        'active': 'bg-green-500/20 text-green-300',
+        'inactive': 'bg-gray-500/20 text-gray-300',
+        'pending': 'bg-yellow-500/20 text-yellow-300',
+        'rejected': 'bg-red-500/20 text-red-300',
+        'approved': 'bg-green-500/20 text-green-300',
+        'qualified': 'bg-purple-500/20 text-purple-300',
+        'not qualified': 'bg-red-500/20 text-red-300',
+      }[value.toString().toLowerCase()] || 'bg-blue-500/20 text-blue-300';
       
-      // Format dates if detected
-      if (typeof value === 'string' && 
-          (value.match(/^\d{4}-\d{2}-\d{2}/) || value.match(/^\d{2}\/\d{2}\/\d{4}/))) {
-        return `<span class="text-gray-400">${value}</span>`;
-      }
-      
-      // Default text formatting
-      return String(value);
-    };
-  
-    return `
-      <div class="overflow-x-auto mt-6 rounded-xl shadow-xl border border-white/10">
-        <table class="min-w-full">
-          <thead>
-            <tr class="bg-gradient-to-r from-purple-900/50 to-gray-800/50 text-left">
-              ${columns.map(col => `
-                <th class="px-6 py-4 border-b border-white/20 text-sm font-medium text-purple-300 uppercase tracking-wider">
-                  <span class="flex items-center">
-                    ${col.replace(/_/g, ' ')}
-                    <svg class="ml-1 w-4 h-4 text-gray-400 hover:text-purple-300 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                    </svg>
-                  </span>
-                </th>
-              `).join('')}
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-white/10 bg-black/20 backdrop-blur-xl">
-            ${jsonData.map((row, rowIndex) => `
-              <tr class="transition-colors hover:bg-white/10">
-                ${columns.map((col, colIndex) => {
-                  const cellValue = formatCellContent(row[col], col);
-                  // First column gets special styling
-                  if (colIndex === 0) {
-                    return `
-                      <td class="pl-6 pr-3 py-4 text-sm font-medium text-purple-200 whitespace-nowrap">
-                        ${cellValue}
-                      </td>
-                    `;
-                  }
+      return `<span class="px-2 py-1 rounded-full text-xs ${statusClass}">${value}</span>`;
+    }
+    
+    // Format dates if detected
+    if (typeof value === 'string' && 
+        (value.match(/^\d{4}-\d{2}-\d{2}/) || value.match(/^\d{2}\/\d{2}\/\d{4}/))) {
+      return `<span class="text-gray-400">${value}</span>`;
+    }
+    
+    // Default text formatting
+    return String(value);
+  };
+
+  return `
+    <div class="overflow-x-auto mt-6 rounded-xl shadow-xl border border-white/10">
+      <table class="min-w-full">
+        <thead>
+          <tr class="bg-gradient-to-r from-purple-900/50 to-gray-800/50 text-left">
+            ${columns.map(col => `
+              <th class="px-6 py-4 border-b border-white/20 text-sm font-medium text-purple-300 uppercase tracking-wider">
+                <span class="flex items-center">
+                  ${col.replace(/_/g, ' ')}
+                  <svg class="ml-1 w-4 h-4 text-gray-400 hover:text-purple-300 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                  </svg>
+                </span>
+              </th>
+            `).join('')}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/10 bg-black/20 backdrop-blur-xl">
+          ${jsonData.map((row, rowIndex) => `
+            <tr class="transition-colors hover:bg-white/10">
+              ${columns.map((col, colIndex) => {
+                const cellValue = formatCellContent(row[col], col, rowIndex);
+                // First column gets special styling
+                if (colIndex === 0) {
                   return `
-                    <td class="px-6 py-4 text-sm text-gray-300 whitespace-nowrap">
+                    <td class="pl-6 pr-3 py-4 text-sm font-medium text-purple-200 whitespace-nowrap">
                       ${cellValue}
                     </td>
                   `;
-                }).join('')}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+                }
+                return `
+                  <td class="px-6 py-4 text-sm text-gray-300 whitespace-nowrap">
+                    ${cellValue}
+                  </td>
+                `;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-3 flex justify-between items-center">
+      <button id="downloadCSV" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
+        <span class="mr-2">Download CSV</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </button>
+      <div class="text-xs text-gray-400">
+        Showing ${jsonData.length} result${jsonData.length !== 1 ? 's' : ''}
       </div>
-      <div class="mt-3 flex justify-between items-center">
-        <button id="downloadCSV" class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
-          <span class="mr-2">Download CSV</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        </button>
-        <div class="text-xs text-gray-400">
-          Showing ${jsonData.length} result${jsonData.length !== 1 ? 's' : ''}
-        </div>
-      </div>
-    `;
-  };
-
+    </div>
+  `;
+};
   React.useEffect(() => {
     const downloadButton = document.getElementById('downloadCSV');
     if (downloadButton) {

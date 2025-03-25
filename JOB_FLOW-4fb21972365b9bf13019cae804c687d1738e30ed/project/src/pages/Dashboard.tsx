@@ -141,6 +141,69 @@ function Dashboard() {
     `;
   };
   
+const formatJobDescription = (jobData: any) => {
+  const { job_title, job_location, job_description } = jobData;
+  
+  // Clean up the job description for consistent formatting
+  let cleanedDescription = job_description
+    // Fix inconsistent numbering format in lists
+    .replace(/(\n\d+)\.\s+/g, '\n$1. ') // Ensure consistent spacing after numbers
+    .replace(/\n1\./g, '\n1.') // Handle special case for first item
+    .replace(/\n\n(\d+\.)/g, '\n$1'); // Fix extra line breaks before numbered items
+  
+  // Format the job description text with better styling
+  let formattedDescription = cleanedDescription
+    // Format section headers with more prominent styling
+    .replace(/([A-Za-z\s]+:)\s*\n/g, '<h4 class="text-xl font-semibold text-purple-300 mt-6 mb-3">$1</h4>')
+    // Format numbered lists with better spacing and visual hierarchy
+    .replace(/\n(\d+\.)\s+([^\n]+)/g, '<li class="ml-5 mb-4 flex"><span class="text-purple-400 mr-3 font-medium">$1</span><span class="text-gray-300">$2</span></li>')
+    // Handle paragraphs
+    .replace(/\n\n/g, '</p><p class="text-gray-300 mb-4">')
+    // Handle single line breaks within paragraphs
+    .replace(/\n(?!\n)/g, '<br />');
+
+  // Wrap lists in proper ul tags with better styling
+  formattedDescription = formattedDescription.replace(
+    /(<li class="ml-5 mb-4 flex">.*?<\/li>)+/g,
+    match => `<ul class="list-none my-5 space-y-3">${match}</ul>`
+  );
+  
+  // Highlight important skills and qualifications with more emphasis
+  formattedDescription = formattedDescription.replace(
+    /(communication|interpersonal|teamwork|leadership|management|excel|proficient|knowledge|experience|skills|recruitment|sourcing|screening|interviews|onboarding|engagement)/gi,
+    '<span class="text-purple-200 font-medium">$1</span>'
+  );
+  
+  return `
+    <div class="job-description bg-gradient-to-br from-gray-900/80 to-gray-800/80 backdrop-blur-xl rounded-xl p-8 border border-purple-500/10 mt-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-white/10">
+        <h2 class="text-3xl font-bold text-white mb-2 sm:mb-0">${job_title || 'Job Title'}</h2>
+        ${job_location ? `
+          <div class="flex items-center bg-purple-500/10 px-4 py-2 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="text-purple-300 font-medium">${job_location}</span>
+          </div>
+        ` : ''}
+      </div>
+      
+      <div class="prose prose-invert max-w-none">
+        <p class="text-gray-300">${formattedDescription}</p>
+      </div>
+      
+      <div class="mt-8 pt-4 border-t border-white/10">
+        <button class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg transition-colors flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+          Apply for this position
+        </button>
+      </div>
+    </div>
+  `;
+};
     
 
   const handleFileUpload = async (e: React.FormEvent, endpoint: string) => {
@@ -162,7 +225,6 @@ function Dashboard() {
         formData.append('files', file);
       });
     } else {
-      // FIX: Use 'file' instead of 'jd' to match backend expectation
       formData.append('file', fileInput.files[0]);
     }
   
@@ -185,14 +247,21 @@ function Dashboard() {
           resume: jsonToTable(result)
         }));
       } else {
-        // FIX: Display the extracted job description instead of a static message
-        const jdText = result.job_description || "No job description found.";
+        // Display a simple success message instead of the formatted job description
+        const jobTitle = result.job_title || "Job";
         setResults(prev => ({
           ...prev,
           jd: `
-            <div class="mt-4 p-4 bg-white/5 rounded-lg">
-              <h3 class="text-xl font-semibold text-purple-400 mb-3">Extracted Job Description</h3>
-              <p class="text-gray-300 whitespace-pre-line">${jdText}</p>
+            <div class="mt-6 p-8 bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-xl border border-green-500/30 flex items-center">
+              <div class="bg-green-500/20 p-3 rounded-full mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-xl font-medium text-green-400">Success!</h3>
+                <p class="text-gray-300">Job description for "${jobTitle}" extracted successfully.</p>
+              </div>
             </div>
           `
         }));
@@ -299,15 +368,20 @@ const jsonToTable = (jsonData: any[]) => {
     
     // Highlight status columns
     if (col.toLowerCase() === 'status') {
-      const statusClass = {
+      const statusClasses = {
         'active': 'bg-green-500/20 text-green-300',
         'inactive': 'bg-gray-500/20 text-gray-300',
         'pending': 'bg-yellow-500/20 text-yellow-300',
         'rejected': 'bg-red-500/20 text-red-300',
         'approved': 'bg-green-500/20 text-green-300',
         'qualified': 'bg-purple-500/20 text-purple-300',
-        'not qualified': 'bg-red-500/20 text-red-300',
-      }[value.toString().toLowerCase()] || 'bg-blue-500/20 text-blue-300';
+        'not qualified': 'bg-red-500/20 text-red-300'
+      };
+      
+      const valueStr = value?.toString().toLowerCase() || '';
+      const statusClass = valueStr in statusClasses 
+        ? statusClasses[valueStr as keyof typeof statusClasses] 
+        : 'bg-blue-500/20 text-blue-300';
       
       return `<span class="px-2 py-1 rounded-full text-xs ${statusClass}">${value}</span>`;
     }
@@ -388,11 +462,24 @@ const jsonToTable = (jsonData: any[]) => {
   const handleWhatsAppConnect = (e: React.FormEvent) => {
     e.preventDefault();
     const numberInput = document.getElementById("number") as HTMLInputElement;
+    const messageInput = document.getElementById("message") as HTMLTextAreaElement;
     const phoneNumber = numberInput.value.replace(/\D/g, '');
 
     if (phoneNumber.length >= 10) {
       const formattedNumber = phoneNumber.length === 10 ? `91${phoneNumber}` : phoneNumber;
-      window.open(`https://wa.me/${formattedNumber}`, '_blank');
+      
+      // Combine default message with custom message
+      const defaultMessage = "Your resume has been shortlisted.";
+      const customMessage = messageInput.value.trim();
+      const fullMessage = customMessage 
+        ? `${defaultMessage} ${customMessage}` 
+        : defaultMessage;
+      
+      // Properly encode the message for URL
+      const encodedMessage = encodeURIComponent(fullMessage);
+      
+      // Open WhatsApp with the pre-filled message
+      window.open(`https://wa.me/${formattedNumber}?text=${encodedMessage}`, '_blank');
     } else {
       alert('Please enter a valid phone number');
     }
@@ -618,6 +705,17 @@ const jsonToTable = (jsonData: any[]) => {
                     id="number"
                     className="mt-1 block w-full rounded-lg bg-white/5 border border-white/10 text-white px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="Enter phone number"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-300">
+                    Additional Message <span className="text-xs text-gray-500">(A default message "Your resume has been shortlisted" will be included)</span>
+                  </label>
+                  <textarea
+                    id="message"
+                    rows={3}
+                    className="mt-1 block w-full rounded-lg bg-white/5 border border-white/10 text-white px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Add any additional details here..."
                   />
                 </div>
                 <button

@@ -25,7 +25,7 @@ function Dashboard() {
   });
   const [tableData, setTableData] = useState<any[]>([]);
 
-  const apiUrl = "https://recruitment-385388557268.asia-south2.run.app";
+  const apiUrl = "https://jobfllowai-622430745738.asia-south1.run.app";
 
   const handleJobPostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
